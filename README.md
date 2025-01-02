@@ -16,7 +16,7 @@ cd STTS2_server
 pip install -r requirements.txt
 ```
   - Note: You must have `cuDNN` installed to use `onnxruntime-gpu`.
-5. Download the models and place them in the STTS2_server/Models directory.
+5. Download the models [here](https://drive.google.com/drive/folders/1-Ec0OnZ-KHLPiFfRALdjbrXvf0TRU1jW?usp=sharing) and place them in the STTS2_server/Models directory.
   
 ## Run server
 - To run the server using a .pth model:
