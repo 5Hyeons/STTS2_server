@@ -21,8 +21,12 @@ random.seed(0)
 np.random.seed(0)
 
 # Add StyleTTS2 path
+import time
 import sys
 import os
+styletts2_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'StyleTTS2'))
+sys.path.insert(0, styletts2_path)
+print(styletts2_path)
 
 # Import necessary modules
 from models import *
@@ -215,16 +219,13 @@ def inference(text, alpha = 0.3, beta = 0.7, diffusion_steps=15, embedding_scale
         
     return out.squeeze().cpu().numpy()[..., :-50] # weird pulse at the end of the model, need to be fixed later
 
-# FastAPI app
-app = FastAPI()
-
 class TTSRequest(BaseModel):
     text: str
 
-@app.post("/tts")
-async def text_to_speech(request: TTSRequest):
-    try:
+def text_to_speech(request: TTSRequest):
+        start_time = time.time()
         wav = inference(request.text)
+        print(f"Execution time: {time.time() - start_time} seconds")
 
         # Ensure the audio is in the correct range (-1 to 1)
         wav = np.clip(wav, -1, 1)
@@ -234,23 +235,10 @@ async def text_to_speech(request: TTSRequest):
         print(f"Audio min: {wav.min()}, max: {wav.max()}")
         print(f"Intended sample rate: 24000")
                                         
-                        
-        # Convert to bytes using an in-memory buffer
-        buffer = io.BytesIO()
-        sf.write(buffer, wav, 24000, format='wav')
-        buffer.seek(0)
+        # Save the audio to a WAV file
+        
+        sf.write("output.wav", wav, 24000, format='wav')
 
-        # Read back the file to check its properties
-        with sf.SoundFile(buffer) as sf_file:
-            print(f"Actual sample rate: {sf_file.samplerate}")
-            print(f"Channels: {sf_file.channels}")
-            print(f"Format: {sf_file.format}")
-            print(f"Subtype: {sf_file.subtype}")
-
-        return StreamingResponse(content=buffer, media_type="audio/wav")
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8014)
+    text_to_speech(TTSRequest(text="안녕하세요, 이것은 샘플 목소리입니다. 잘 들리시나요? 잘 들리신다면 잘 들리신다고 말씀해주세요!"))

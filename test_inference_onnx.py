@@ -24,6 +24,7 @@ np.random.seed(0)
 # Add StyleTTS2 path
 import sys
 import os
+import time
 
 # Import necessary modules
 from models import *
@@ -101,10 +102,19 @@ ref_s_path = 'Models/dani_onnx/ref_dani.npy'
 features = np.load(ref_s_path)
 features = np.repeat(features, 1, axis=0)
 
+# Helper functions
+def length_to_mask(lengths):
+    mask = torch.arange(lengths.max()).unsqueeze(0).expand(lengths.shape[0], -1).type_as(lengths)
+    mask = torch.gt(mask+1, lengths.unsqueeze(1))
+    return mask
+
+
 # Inference function
 def inference(text):
     text = text.strip()
     text = text.replace('"', '')
+    if not text:
+        text = '음성이 제대로 인식되지 않았습니다.'
     token = textcleaner(text)
     token.insert(0, 0)
     token.append(0)
@@ -163,41 +173,26 @@ def inference(text):
 
     return output
 
-# FastAPI app
-app = FastAPI()
 
 class TTSRequest(BaseModel):
     text: str
 
-@app.post("/tts")
-async def text_to_speech(request: TTSRequest):
-    try:
-        wav = inference(request.text)
+def text_to_speech(request: TTSRequest):
+    # Perform
+    start_time = time.time()
+    wav = inference(request.text)
+    print(f"Execution time: {time.time() - start_time} seconds")
 
-        # Ensure the audio is in the correct range (-1 to 1)
-        wav = np.clip(wav, -1, 1)
+    # Ensure the audio is in the correct range (-1 to 1)
+    wav = np.clip(wav, -1, 1)
 
-        # Print debug information
-        print(f"Audio shape: {wav.shape}")
-        print(f"Audio min: {wav.min()}, max: {wav.max()}")
-        print(f"Intended sample rate: 24000")
-                        
-        # Convert to bytes using an in-memory buffer
-        buffer = io.BytesIO()
-        sf.write(buffer, wav, 24000, format='wav')
-        buffer.seek(0)
-
-        # Read back the file to check its properties
-        with sf.SoundFile(buffer) as sf_file:
-            print(f"Actual sample rate: {sf_file.samplerate}")
-            print(f"Channels: {sf_file.channels}")
-            print(f"Format: {sf_file.format}")
-            print(f"Subtype: {sf_file.subtype}")
-
-        return StreamingResponse(content=buffer, media_type="audio/wav")
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    # Print debug information
+    print(f"Audio shape: {wav.shape}")
+    print(f"Audio min: {wav.min()}, max: {wav.max()}")
+    print(f"Intended sample rate: 24000")
+                
+    # save the audio to a file
+    sf.write("output.wav", wav, 24000, format='wav')
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8014)
+    text_to_speech(TTSRequest(text="안녕하세요, 이것은 샘플 목소리입니다. 잘 들리시나요? 잘 들리신다면 잘 들리신다고 말씀해주세요!"))
