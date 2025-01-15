@@ -1,6 +1,6 @@
 SoundFile
-# torchaudio
-# torch
+torchaudio
+torch
 munch
 pydub
 pyyaml
